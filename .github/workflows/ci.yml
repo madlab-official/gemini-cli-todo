@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master", "feat/*" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+      if: hashFiles('composer.json') != ''
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+      if: hashFiles('composer.json') != ''
+
+    # Add a placeholder for linting if/when PHP files are added
+    - name: PHP Lint
+      run: |
+        if [ -n "$(find . -name '*.php' -not -path './vendor/*')" ]; then
+          find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n 1 -P 4 php -l
+        else
+          echo "No PHP files to lint."
+        fi
